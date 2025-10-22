@@ -14,17 +14,17 @@ I use this program to sync the `app-ads.txt` file from [CAS.AI](https://github.c
    For CAS.AI, this is the raw link to their `app-ads.txt` in their repository:  
    `https://raw.githubusercontent.com/cleveradssolutions/App-ads.txt/refs/heads/main/app-ads.txt`  
 
-   ![Enter source URL](images/screenshot00.png)
+   ![Enter source URL](Images/screenshot00.png)
 
 2. **Specify the location of your `app-ads.txt` in your local repository**  
    Example:  
    `C:\Projects\pou1gray.github.io\app-ads.txt`  
 
-   ![Enter app-ads.txt path](images/screenshot01.png)
+   ![Enter app-ads.txt path](Images/screenshot01.png)
 
 3. **After success just commit and push to git**  
-   ![Success!](images/screenshot02.png)
-   ![Push and commit](images/screenshot03.png)
+   ![Success!](Images/screenshot02.png)
+   ![Push and commit](Images/screenshot03.png)
 
 ---
 
