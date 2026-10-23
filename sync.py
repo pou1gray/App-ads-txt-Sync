@@ -18,6 +18,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+__version__ = "2.1.0"
+
 # Ensure UTF-8 output encoding for consoles (e.g. Windows cp1251 / cp866)
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -33,6 +35,7 @@ if os.name == "nt":
 CONFIG_FILE_NAME = "config.json"
 API_BASE_URL = "https://platform-api.cas.ai/api/v2"
 AUTH_BASE_URL = "https://platform-api.cas.ai"
+USER_AGENT = f"AppAdsSync/{__version__} (Python; Cross-Platform)"
 
 
 class TerminalColors:
@@ -72,9 +75,9 @@ def print_header(title: str) -> None:
     print(f"{'=' * width}{TerminalColors.RESET}\n")
 
 
-def pause_exit(code: int = 0) -> None:
+def pause_exit(code: int = 0, no_pause: bool = False) -> None:
     """Prompt the user before exiting so the console window remains open."""
-    if sys.stdin.isatty():
+    if not no_pause and sys.stdin.isatty():
         try:
             input(f"\n{TerminalColors.GRAY}Press Enter to exit...{TerminalColors.RESET}")
         except (KeyboardInterrupt, EOFError):
@@ -108,7 +111,7 @@ class CASApiClient:
             "Content-Type": "application/json",
             "Accept": "application/json",
             "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "AppAdsSync/2.0 (Python; Cross-Platform)",
+            "User-Agent": USER_AGENT,
         }
         payload = {"email": email.strip(), "password": password}
         data = json.dumps(payload).encode("utf-8")
@@ -149,7 +152,7 @@ class CASApiClient:
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                     "X-Requested-With": "XMLHttpRequest",
-                    "User-Agent": "AppAdsSync/2.0",
+                    "User-Agent": USER_AGENT,
                 },
                 method="POST",
             )
@@ -180,7 +183,7 @@ class CASApiClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "X-Requested-With": "XMLHttpRequest",
-                "User-Agent": "AppAdsSync/2.0 (Python; Cross-Platform)",
+                "User-Agent": USER_AGENT,
             }
             req = urllib.request.Request(url, data=data, headers=headers, method=method)
             try:
@@ -263,16 +266,28 @@ def canonical_record_key(line: str) -> Optional[Tuple[str, ...]]:
     Example line: 'google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0 # comment'
     Returns: ('google.com', 'pub-1234567890123456', 'DIRECT')
     """
-    line_without_comment = line.split("#")[0].strip()
+    line_without_comment = line.lstrip("\ufeff").split("#")[0].strip()
     if not line_without_comment:
         return None
 
-    parts = [p.strip() for p in line_without_comment.split(",")]
+    # Handle comma-separated fields and trim quotes/spaces
+    parts = [p.strip().strip('"\'').lstrip("\ufeff") for p in line_without_comment.split(",") if p.strip()]
+    if not parts:
+        return None
+
+    # Normalize domain: strip protocol and trailing slashes if present
+    domain = parts[0].lower().lstrip("\ufeff")
+    if domain.startswith("http://"):
+        domain = domain[7:]
+    elif domain.startswith("https://"):
+        domain = domain[8:]
+    domain = domain.rstrip("/")
+
     if len(parts) >= 3:
         # domain, publisher_id, account_type (DIRECT / RESELLER)
-        return (parts[0].lower(), parts[1].lower(), parts[2].upper())
+        return (domain, parts[1].lower(), parts[2].upper())
     elif len(parts) == 2:
-        return (parts[0].lower(), parts[1].lower())
+        return (domain, parts[1].lower())
     return (line_without_comment.lower(),)
 
 
@@ -285,10 +300,10 @@ def parse_existing_file(filepath: Path) -> Tuple[List[str], Set[Tuple[str, ...]]
     seen_keys: Set[Tuple[str, ...]] = set()
     seen_stripped_lines: Set[str] = set()
 
-    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+    with open(filepath, "r", encoding="utf-8-sig", errors="replace") as f:
         for line in f:
             raw_lines.append(line)
-            stripped = line.strip()
+            stripped = line.strip().lstrip("\ufeff")
             if stripped:
                 seen_stripped_lines.add(stripped)
                 key = canonical_record_key(stripped)
@@ -298,7 +313,7 @@ def parse_existing_file(filepath: Path) -> Tuple[List[str], Set[Tuple[str, ...]]
     return raw_lines, seen_keys, seen_stripped_lines
 
 
-def load_or_create_config(config_path: Path) -> Dict[str, Any]:
+def load_or_create_config(config_path: Path, no_pause: bool = False) -> Dict[str, Any]:
     """
     Load config.json or prompt the user interactively on first run.
     Note: Passwords are NEVER saved in config.json. Only the obtained API token is saved.
@@ -347,7 +362,7 @@ def load_or_create_config(config_path: Path) -> Dict[str, Any]:
             print_success("Authentication successful! Access token obtained.")
         except Exception as e:
             print_error(f"Login failed: {e}")
-            pause_exit(1)
+            pause_exit(1, no_pause=no_pause)
     else:
         print_info(
             "Tip: On https://platform.cas.ai open browser DevTools (F12) -> Application\n"
@@ -361,6 +376,10 @@ def load_or_create_config(config_path: Path) -> Dict[str, Any]:
         target_file_path = input(
             f"{TerminalColors.BOLD}Enter path to app-ads.txt (e.g. C:\\Projects\\site\\app-ads.txt): {TerminalColors.RESET}"
         ).strip().strip('"').strip("'")
+
+    p_check = Path(target_file_path).expanduser()
+    if p_check.is_dir() or target_file_path.endswith(("/", "\\")):
+        target_file_path = str(p_check / "app-ads.txt")
 
     # Only save token and target path. Never save passwords!
     config: Dict[str, Any] = {
@@ -383,8 +402,15 @@ def sync_app_ads_txt(
     target_file_path: str,
     dry_run: bool = False,
     recheck_remote: bool = False,
-) -> None:
+    no_pause: bool = False,
+) -> Dict[str, Any]:
+    """
+    Main synchronization routine: fetches apps and app-ads.txt data from CAS API,
+    compares with local file, and appends new missing lines without duplicating.
+    """
     target_path = Path(target_file_path).expanduser().resolve()
+    if target_path.is_dir():
+        target_path = target_path / "app-ads.txt"
     print_info(f"Target file: {TerminalColors.WHITE}{target_path}{TerminalColors.RESET}")
 
     # Parse existing file
@@ -406,7 +432,7 @@ def sync_app_ads_txt(
         apps = client.list_all_apps()
     except Exception as e:
         print_error(f"Failed to fetch application list: {e}")
-        pause_exit(1)
+        pause_exit(1, no_pause=no_pause)
 
     print_success(f"Applications found in CAS account: {len(apps)}")
 
@@ -521,9 +547,20 @@ def sync_app_ads_txt(
     print(f"  New unique lines found:           {TerminalColors.GREEN}{TerminalColors.BOLD}+{len(total_missing_lines_collected)}{TerminalColors.RESET}")
     print(f"  Total lines in file AFTER sync:   {TerminalColors.BOLD}{initial_existing_count + len(total_missing_lines_collected)}{TerminalColors.RESET}")
 
+    sync_result = {
+        "apps_total": len(apps),
+        "apps_ok": apps_ok,
+        "apps_issues": apps_with_issues,
+        "apps_with_new_lines": apps_with_missing_lines,
+        "initial_lines_count": initial_existing_count,
+        "new_lines_count": len(total_missing_lines_collected),
+        "new_lines": total_missing_lines_collected,
+        "dry_run": dry_run,
+    }
+
     if not total_missing_lines_collected:
         print(f"\n{TerminalColors.GREEN}[+] All lines are already present in your app-ads.txt! File is completely up to date.{TerminalColors.RESET}")
-        return
+        return sync_result
 
     # Print preview of lines
     print(f"\n{TerminalColors.BOLD}{TerminalColors.CYAN}Lines to be added ({len(total_missing_lines_collected)} total):{TerminalColors.RESET}")
@@ -532,7 +569,7 @@ def sync_app_ads_txt(
 
     if dry_run:
         print_warning("\n[DRY RUN] Preview mode: no files were modified on disk.")
-        return
+        return sync_result
 
     # 4. Write / Append to target file
     try:
@@ -543,7 +580,7 @@ def sync_app_ads_txt(
             with open(target_path, "rb") as f:
                 f.seek(-1, os.SEEK_END)
                 last_char = f.read(1)
-                if last_char != b"\n":
+                if last_char not in (b"\n", b"\r"):
                     needs_leading_newline = True
 
         with open(target_path, "a" if target_path.exists() else "w", encoding="utf-8") as f:
@@ -564,12 +601,20 @@ def sync_app_ads_txt(
 
     except Exception as e:
         print_error(f"Failed to write to {target_path}: {e}")
-        pause_exit(1)
+        pause_exit(1, no_pause=no_pause)
+
+    return sync_result
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Sync missing lines from Clever Ads Solutions API to your local app-ads.txt file."
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument(
         "--config",
@@ -597,6 +642,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Request CAS to re-verify published app-ads.txt before fetching lines",
     )
+    parser.add_argument(
+        "--no-pause",
+        action="store_true",
+        help="Exit immediately without waiting for keypress (ideal for CI/CD)",
+    )
     return parser.parse_args()
 
 
@@ -609,21 +659,22 @@ def main() -> None:
     target_path = args.target or os.environ.get("APP_ADS_TXT_PATH")
 
     if not api_token or not target_path:
-        config = load_or_create_config(config_path)
+        config = load_or_create_config(config_path, no_pause=args.no_pause)
         api_token = api_token or config.get("api_token")
         target_path = target_path or config.get("target_file_path")
 
     if not api_token or not target_path:
         print_error("Missing authentication token or target app-ads.txt file path.")
-        pause_exit(1)
+        pause_exit(1, no_pause=args.no_pause)
 
     sync_app_ads_txt(
         api_token=api_token,
         target_file_path=target_path,
         dry_run=args.dry_run,
         recheck_remote=args.recheck,
+        no_pause=args.no_pause,
     )
-    pause_exit(0)
+    pause_exit(0, no_pause=args.no_pause)
 
 
 if __name__ == "__main__":
@@ -631,4 +682,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print(f"\n{TerminalColors.YELLOW}Operation cancelled by user.{TerminalColors.RESET}")
-        pause_exit(130)
+        pause_exit(130, no_pause=True)
