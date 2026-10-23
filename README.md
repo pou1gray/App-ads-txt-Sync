@@ -30,7 +30,14 @@ Works on **Windows, macOS, and Linux** with **zero external pip dependencies** (
 
 ## Getting Started
 
-### 1. Launch
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/pou1gray/App-ads-txt-Sync.git
+cd App-ads-txt-Sync
+```
+
+### 2. Launch
 
 **Windows:**
 ```bat
@@ -45,7 +52,7 @@ chmod +x run.sh
 ```
 *(or `python3 sync.py`)*
 
-### 2. First Run Setup
+### 3. First Run Setup
 
 On first launch, the program will prompt you for configuration:
 
@@ -57,7 +64,7 @@ On first launch, the program will prompt you for configuration:
 
 Settings are saved to `config.json` (git-ignored to protect your credentials). On subsequent runs, simply execute `run.bat` or `./run.sh`!
 
-### 3. Commit and Push
+### 4. Commit and Push
 Once the missing lines have been merged into your local repository, commit and push:
 ```bash
 git add app-ads.txt
