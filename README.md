@@ -77,7 +77,6 @@ python sync.py --dry-run
 python sync.py --recheck
 
 # Override credentials or target path via CLI
-python sync.py --email user@example.com --password mypass --target ./app-ads.txt
 python sync.py --token YOUR_TOKEN --target ./app-ads.txt
 
 # Custom configuration file
@@ -86,7 +85,5 @@ python sync.py --config custom_config.json
 
 ### Environment Variables
 You can also use environment variables (ideal for CI/CD or automated cron jobs):
-- `CAS_EMAIL`
-- `CAS_PASSWORD`
 - `CAS_API_TOKEN`
 - `APP_ADS_TXT_PATH`

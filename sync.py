@@ -76,7 +76,7 @@ def pause_exit(code: int = 0) -> None:
     """Prompt the user before exiting so the console window remains open."""
     if sys.stdin.isatty():
         try:
-            input(f"\n{TerminalColors.GRAY}Нажмите Enter для выхода...{TerminalColors.RESET}")
+            input(f"\n{TerminalColors.GRAY}Press Enter to exit...{TerminalColors.RESET}")
         except (KeyboardInterrupt, EOFError):
             pass
     sys.exit(code)
@@ -308,61 +308,61 @@ def load_or_create_config(config_path: Path) -> Dict[str, Any]:
             with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
                 if config.get("api_token") and config.get("target_file_path"):
-                    print_success(f"Конфигурация загружена из {config_path}")
+                    print_success(f"Configuration loaded from {config_path}")
                     return config
         except Exception as e:
-            print_warning(f"Не удалось прочитать {config_path}: {e}")
+            print_warning(f"Could not read {config_path}: {e}")
 
-    print_header("Настройка авторизации и параметров")
-    print(f"{TerminalColors.WHITE}Выберите способ авторизации в Clever Ads Solutions:{TerminalColors.RESET}\n")
-    print(f"  {TerminalColors.BOLD}1{TerminalColors.RESET}) Вход по Email и Паролю")
-    print(f"     {TerminalColors.GRAY}Пароль используется однократно для генерации токена и НЕ сохраняется на диск!{TerminalColors.RESET}")
-    print(f"  {TerminalColors.BOLD}2{TerminalColors.RESET}) Ввести токен вручную")
-    print(f"     {TerminalColors.GRAY}Скопировать 'onebi_actor_token' из DevTools браузера (F12 -> Application -> Local Storage){TerminalColors.RESET}\n")
+    print_header("Authentication & Settings Setup")
+    print(f"{TerminalColors.WHITE}Choose authentication method for Clever Ads Solutions:{TerminalColors.RESET}\n")
+    print(f"  {TerminalColors.BOLD}1{TerminalColors.RESET}) Log in with Email and Password")
+    print(f"     {TerminalColors.GRAY}Password is used in memory once to obtain an API token and is NEVER saved to disk!{TerminalColors.RESET}")
+    print(f"  {TerminalColors.BOLD}2{TerminalColors.RESET}) Enter API Token manually")
+    print(f"     {TerminalColors.GRAY}Copy 'onebi_actor_token' from browser DevTools (F12 -> Application -> Local Storage){TerminalColors.RESET}\n")
 
     choice = ""
     while choice not in ("1", "2"):
-        choice = input(f"{TerminalColors.BOLD}Выберите вариант [1/2]: {TerminalColors.RESET}").strip()
+        choice = input(f"{TerminalColors.BOLD}Select an option [1/2]: {TerminalColors.RESET}").strip()
 
     api_token = ""
 
     if choice == "1":
         email = ""
         while not email:
-            email = input(f"{TerminalColors.BOLD}Введите CAS Email: {TerminalColors.RESET}").strip()
+            email = input(f"{TerminalColors.BOLD}Enter CAS Email: {TerminalColors.RESET}").strip()
 
         password = ""
         while not password:
             try:
-                password = getpass.getpass(f"{TerminalColors.BOLD}Введите CAS Пароль: {TerminalColors.RESET}")
+                password = getpass.getpass(f"{TerminalColors.BOLD}Enter CAS Password: {TerminalColors.RESET}")
             except Exception:
-                password = input(f"{TerminalColors.BOLD}Введите CAS Пароль: {TerminalColors.RESET}")
+                password = input(f"{TerminalColors.BOLD}Enter CAS Password: {TerminalColors.RESET}")
             if not password:
-                print_warning("Пароль не может быть пустым.")
+                print_warning("Password cannot be empty.")
 
-        print_info("Авторизация на сервере CAS...")
+        print_info("Authenticating with CAS server...")
         try:
             api_token = CASApiClient.login_and_get_token(email, password)
             del password  # Immediately erase password from memory
-            print_success("Авторизация успешна! Получен токен доступа.")
+            print_success("Authentication successful! Access token obtained.")
         except Exception as e:
-            print_error(f"Ошибка входа: {e}")
+            print_error(f"Login failed: {e}")
             pause_exit(1)
     else:
         print_info(
-            "Подсказка: на сайте https://platform.cas.ai откройте DevTools (F12) -> Application\n"
-            "           -> Local Storage -> https://platform.cas.ai -> скопируйте значение 'onebi_actor_token'"
+            "Tip: On https://platform.cas.ai open browser DevTools (F12) -> Application\n"
+            "     -> Local Storage -> https://platform.cas.ai -> copy value of 'onebi_actor_token'"
         )
         while not api_token.strip():
-            api_token = input(f"{TerminalColors.BOLD}Введите токен CAS: {TerminalColors.RESET}").strip()
+            api_token = input(f"{TerminalColors.BOLD}Enter CAS Token: {TerminalColors.RESET}").strip()
 
     target_file_path = ""
     while not target_file_path.strip():
         target_file_path = input(
-            f"{TerminalColors.BOLD}Укажите путь к файлу app-ads.txt (напр. C:\\Projects\\site\\app-ads.txt): {TerminalColors.RESET}"
+            f"{TerminalColors.BOLD}Enter path to app-ads.txt (e.g. C:\\Projects\\site\\app-ads.txt): {TerminalColors.RESET}"
         ).strip().strip('"').strip("'")
 
-    # Only save the token and target path. Never save passwords!
+    # Only save token and target path. Never save passwords!
     config: Dict[str, Any] = {
         "api_token": api_token,
         "target_file_path": target_file_path,
@@ -371,9 +371,9 @@ def load_or_create_config(config_path: Path) -> Dict[str, Any]:
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4)
-        print_success(f"Конфигурация успешно сохранена в {config_path} (пароль не сохранялся!)\n")
+        print_success(f"Configuration saved to {config_path} (password was not saved!)\n")
     except Exception as e:
-        print_warning(f"Не удалось записать {config_path}: {e}\n")
+        print_warning(f"Could not save {config_path}: {e}\n")
 
     return config
 
@@ -385,30 +385,30 @@ def sync_app_ads_txt(
     recheck_remote: bool = False,
 ) -> None:
     target_path = Path(target_file_path).expanduser().resolve()
-    print_info(f"Целевой файл: {TerminalColors.WHITE}{target_path}{TerminalColors.RESET}")
+    print_info(f"Target file: {TerminalColors.WHITE}{target_path}{TerminalColors.RESET}")
 
     # Parse existing file
     existing_lines, seen_keys, seen_stripped_lines = parse_existing_file(target_path)
     initial_existing_count = len([l for l in existing_lines if l.strip()])
     if target_path.exists():
         print_info(
-            f"Найден локальный файл: {len(existing_lines)} строк ({len(seen_keys)} уникальных записей, {initial_existing_count} непустых)"
+            f"Local file found: {len(existing_lines)} lines ({len(seen_keys)} unique records, {initial_existing_count} non-empty)"
         )
     else:
-        print_info("Локальный файл пока отсутствует — он будет создан автоматически.")
+        print_info("Local file does not exist yet. It will be created automatically.")
 
     # Initialize API Client
     client = CASApiClient(api_token=api_token)
 
     # 1. Fetch apps
-    print_info("Запрос списка приложений из CAS API...")
+    print_info("Fetching application list from CAS API...")
     try:
         apps = client.list_all_apps()
     except Exception as e:
-        print_error(f"Не удалось получить список приложений: {e}")
+        print_error(f"Failed to fetch application list: {e}")
         pause_exit(1)
 
-    print_success(f"Найдено приложений в аккаунте CAS: {len(apps)}")
+    print_success(f"Applications found in CAS account: {len(apps)}")
 
     # 2. Iterate through apps and collect missing lines
     total_missing_lines_collected: List[str] = []
@@ -417,7 +417,7 @@ def sync_app_ads_txt(
     apps_ok = 0
     apps_detailed_report: List[Dict[str, Any]] = []
 
-    print_header("Проверка приложений и missing_lines")
+    print_header("Auditing Applications & Missing Lines")
 
     for idx, app in enumerate(apps, 1):
         app_id = app.get("id", "unknown")
@@ -430,9 +430,9 @@ def sync_app_ads_txt(
 
         try:
             if recheck_remote:
-                print(f"  [{idx}/{len(apps)}] Запрос перепроверки CAS для {display_name}...", end="", flush=True)
+                print(f"  [{idx}/{len(apps)}] Requesting CAS recheck for {display_name}...", end="", flush=True)
                 parts = client.recheck_app_ads_txt(app_id)
-                print(" готово.")
+                print(" done.")
             else:
                 parts = client.get_app_ads_txt_parts(app_id)
 
@@ -491,9 +491,9 @@ def sync_app_ads_txt(
 
             print(
                 f"  {status_color}{status_icon} [{idx}/{len(apps)}] {display_name}{TerminalColors.RESET}\n"
-                f"      Статус в CAS: {TerminalColors.BOLD}{status.upper()}{TerminalColors.RESET} | "
-                f"Строк в CAS missing: {len(raw_missing_lines)} | "
-                f"Новых для файла: {TerminalColors.GREEN}+{len(new_lines_for_app)}{TerminalColors.RESET}"
+                f"      CAS Status: {TerminalColors.BOLD}{status.upper()}{TerminalColors.RESET} | "
+                f"Lines in CAS missing: {len(raw_missing_lines)} | "
+                f"New for local file: {TerminalColors.GREEN}+{len(new_lines_for_app)}{TerminalColors.RESET}"
             )
             if landing_url:
                 print(f"      {TerminalColors.GRAY}Landing URL: {landing_url}{TerminalColors.RESET}")
@@ -507,31 +507,31 @@ def sync_app_ads_txt(
             print()
 
         except Exception as e:
-            print_error(f"  [{idx}/{len(apps)}] Ошибка получения данных для {display_name}: {e}\n")
+            print_error(f"  [{idx}/{len(apps)}] Error fetching details for {display_name}: {e}\n")
 
     # 3. Print Comprehensive Summary
-    print_header("Итоговый отчет о синхронизации")
+    print_header("Synchronization Summary")
 
-    print(f"  Всего приложений в CAS:        {TerminalColors.BOLD}{len(apps)}{TerminalColors.RESET}")
-    print(f"  Приложений в статусе OK:       {TerminalColors.GREEN}{apps_ok}{TerminalColors.RESET}")
-    print(f"  Приложений с замечаниями:      {TerminalColors.YELLOW if apps_with_issues else TerminalColors.GREEN}{apps_with_issues}{TerminalColors.RESET}")
-    print(f"  Приложений, давших новые строки:{TerminalColors.BOLD}{apps_with_missing_lines}{TerminalColors.RESET}")
+    print(f"  Total applications in CAS:        {TerminalColors.BOLD}{len(apps)}{TerminalColors.RESET}")
+    print(f"  Applications with status OK:      {TerminalColors.GREEN}{apps_ok}{TerminalColors.RESET}")
+    print(f"  Applications with issues:         {TerminalColors.YELLOW if apps_with_issues else TerminalColors.GREEN}{apps_with_issues}{TerminalColors.RESET}")
+    print(f"  Applications with new lines:      {TerminalColors.BOLD}{apps_with_missing_lines}{TerminalColors.RESET}")
     print(f"  -------------------------------------------------------------")
-    print(f"  Строк в файле ДО синхронизации: {TerminalColors.BOLD}{initial_existing_count}{TerminalColors.RESET}")
-    print(f"  Новых уникальных строк найдено: {TerminalColors.GREEN}{TerminalColors.BOLD}+{len(total_missing_lines_collected)}{TerminalColors.RESET}")
-    print(f"  Всего строк в файле ПОСЛЕ:      {TerminalColors.BOLD}{initial_existing_count + len(total_missing_lines_collected)}{TerminalColors.RESET}")
+    print(f"  Lines in file BEFORE sync:        {TerminalColors.BOLD}{initial_existing_count}{TerminalColors.RESET}")
+    print(f"  New unique lines found:           {TerminalColors.GREEN}{TerminalColors.BOLD}+{len(total_missing_lines_collected)}{TerminalColors.RESET}")
+    print(f"  Total lines in file AFTER sync:   {TerminalColors.BOLD}{initial_existing_count + len(total_missing_lines_collected)}{TerminalColors.RESET}")
 
     if not total_missing_lines_collected:
-        print(f"\n{TerminalColors.GREEN}✔ Все строки уже присутствуют в вашем app-ads.txt! Файл полностью актуален.{TerminalColors.RESET}")
+        print(f"\n{TerminalColors.GREEN}[+] All lines are already present in your app-ads.txt! File is completely up to date.{TerminalColors.RESET}")
         return
 
     # Print preview of lines
-    print(f"\n{TerminalColors.BOLD}{TerminalColors.CYAN}Список строк для добавления ({len(total_missing_lines_collected)} шт.):{TerminalColors.RESET}")
+    print(f"\n{TerminalColors.BOLD}{TerminalColors.CYAN}Lines to be added ({len(total_missing_lines_collected)} total):{TerminalColors.RESET}")
     for i, line in enumerate(total_missing_lines_collected, 1):
         print(f"  {TerminalColors.GRAY}{i:02d}.{TerminalColors.RESET} {TerminalColors.GREEN}{line}{TerminalColors.RESET}")
 
     if dry_run:
-        print_warning("\n[DRY RUN] Режим предпросмотра: файл не изменялся на диске.")
+        print_warning("\n[DRY RUN] Preview mode: no files were modified on disk.")
         return
 
     # 4. Write / Append to target file
@@ -552,10 +552,10 @@ def sync_app_ads_txt(
             for line in total_missing_lines_collected:
                 f.write(f"{line}\n")
 
-        print_success(f"\nФайл успешно обновлен: {target_path}")
+        print_success(f"\nFile successfully updated: {target_path}")
         print(
             f"\n{TerminalColors.BOLD}{TerminalColors.GREEN}"
-            f"=== Синхронизация завершена! Закоммитьте и отправьте изменения в Git: ==="
+            f"=== Synchronization complete! Commit and push your changes to Git: ==="
             f"{TerminalColors.RESET}"
         )
         print(f"  {TerminalColors.WHITE}git add app-ads.txt{TerminalColors.RESET}")
@@ -563,39 +563,39 @@ def sync_app_ads_txt(
         print(f"  {TerminalColors.WHITE}git push{TerminalColors.RESET}\n")
 
     except Exception as e:
-        print_error(f"Не удалось записать в {target_path}: {e}")
+        print_error(f"Failed to write to {target_path}: {e}")
         pause_exit(1)
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Синхронизация недостающих строк из Clever Ads Solutions API в локальный файл app-ads.txt."
+        description="Sync missing lines from Clever Ads Solutions API to your local app-ads.txt file."
     )
     parser.add_argument(
         "--config",
         "-c",
         default=CONFIG_FILE_NAME,
-        help=f"Путь к JSON-файлу конфигурации (по умолчанию: {CONFIG_FILE_NAME})",
+        help=f"Path to JSON configuration file (default: {CONFIG_FILE_NAME})",
     )
     parser.add_argument(
         "--token",
         "-t",
-        help="CAS API Токен (переопределяет config.json)",
+        help="CAS API Token (overrides config.json)",
     )
     parser.add_argument(
         "--target",
         "-p",
-        help="Путь к файлу app-ads.txt (переопределяет config.json)",
+        help="Path to local app-ads.txt file (overrides config.json)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Показать недостающие строки без изменения файла на диске",
+        help="Check and display missing lines without modifying the file on disk",
     )
     parser.add_argument(
         "--recheck",
         action="store_true",
-        help="Запросить у CAS перепроверку опубликованного файла перед получением строк",
+        help="Request CAS to re-verify published app-ads.txt before fetching lines",
     )
     return parser.parse_args()
 
@@ -614,7 +614,7 @@ def main() -> None:
         target_path = target_path or config.get("target_file_path")
 
     if not api_token or not target_path:
-        print_error("Отсутствует токен авторизации или путь к файлу app-ads.txt.")
+        print_error("Missing authentication token or target app-ads.txt file path.")
         pause_exit(1)
 
     sync_app_ads_txt(
@@ -630,5 +630,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(f"\n{TerminalColors.YELLOW}Операция отменена пользователем.{TerminalColors.RESET}")
+        print(f"\n{TerminalColors.YELLOW}Operation cancelled by user.{TerminalColors.RESET}")
         pause_exit(130)
