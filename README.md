@@ -4,6 +4,10 @@ Cross-platform tool to automatically synchronize and merge missing `app-ads.txt`
 
 Works on **Windows, macOS, and Linux** with **zero external pip dependencies** (uses standard Python 3.7+ libraries).
 
+<p align="center">
+  <img src="Images/screenshot.png" alt="App-ads Sync CLI Preview" width="780">
+</p>
+
 ---
 
 ## Features
