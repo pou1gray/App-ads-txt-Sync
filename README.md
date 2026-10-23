@@ -1,32 +1,92 @@
 # App-ads Sync
 
-A simple tool that allows you to sync your `app-ads.txt` in just a few clicks if you are using **GitHub Pages** to host your `app-ads.txt`.
+Cross-platform tool to automatically synchronize and merge missing `app-ads.txt` records from **Clever Ads Solutions (CAS.AI) Platform API** into your local `app-ads.txt` file.
 
-Yes, doing it manually is very easy, but I decided to automate this task a little, so maybe you will find it useful too.
-
-I use this program to sync the `app-ads.txt` file from [CAS.AI](https://github.com/cleveradssolutions).
+Works on **Windows, macOS, and Linux** with **zero external pip dependencies** (uses standard Python 3.7+ libraries).
 
 ---
 
-## How to Use
+## Features
 
-1. **Specify the source `app-ads.txt`**  
-   For CAS.AI, this is the raw link to their `app-ads.txt` in their repository:  
-   `https://raw.githubusercontent.com/cleveradssolutions/App-ads.txt/refs/heads/main/app-ads.txt`  
-
-   ![Enter source URL](Images/screenshot00.png)
-
-2. **Specify the location of your `app-ads.txt` in your local repository**  
-   Example:  
-   `C:\Projects\pou1gray.github.io\app-ads.txt`  
-
-   ![Enter app-ads.txt path](Images/screenshot01.png)
-
-3. **After success just commit and push to git**  
-   ![Success!](Images/screenshot02.png)
-   ![Push and commit](Images/screenshot03.png)
+- **Direct CAS API Integration**: Connects to the official [CAS Platform API](https://platform-api.cas.ai/docs/api).
+- **Two Easy Authentication Options**:
+  - **Login & Password**: Use your standard CAS account credentials (recommended - automatically manages and refreshes session tokens).
+  - **Token**: Use your existing token / API key (from DevTools or environment).
+- **Per-Application Audit**: Iterates through all applications in your CAS account and queries missing lines (`AppAdsTxtPartsResource`).
+- **Smart Non-Destructive Merge**:
+  - Automatically identifies missing lines across all your apps.
+  - Checks against your existing `app-ads.txt` records (canonicalizing domain, publisher ID, and account type to prevent duplicates).
+  - Appends only new, unique lines without touching or breaking your custom existing records.
+- **Cross-Platform**: Run on Windows, macOS, or Linux.
+- **Safe Modes**: Includes `--dry-run` to preview changes and `--recheck` to trigger CAS remote verification.
 
 ---
 
-The source URL and local path you enter are saved in a `config.json` file.  
-In the future, you can simply run the program and then do `git commit` and `git push` - no need to enter the paths again.
+## Requirements
+
+- Python 3.7+ installed. No `pip install` required!
+
+---
+
+## Getting Started
+
+### 1. Launch
+
+**Windows:**
+```bat
+run.bat
+```
+*(or `python sync.py`)*
+
+**macOS / Linux:**
+```bash
+chmod +x run.sh
+./run.sh
+```
+*(or `python3 sync.py`)*
+
+### 2. First Run Setup
+
+On first launch, the program will prompt you for configuration:
+
+1. **Authentication Method**:
+   - **Method 1 (Recommended)**: Log in with your CAS Email & Password. The tool connects to `https://platform-api.cas.ai/auth/login`, obtains the token, and will automatically refresh it if it expires.
+   - **Method 2**: Enter your token manually. You can copy it from `https://platform.cas.ai` in browser DevTools:
+     `F12` &rarr; **Application** &rarr; **Local Storage** &rarr; `https://platform.cas.ai` &rarr; `onebi_actor_token`.
+2. **Target File Path**: Path to your local `app-ads.txt` (for example: `C:\Projects\my-site\app-ads.txt` or `~/my-site/app-ads.txt`).
+
+Settings are saved to `config.json` (git-ignored to protect your credentials). On subsequent runs, simply execute `run.bat` or `./run.sh`!
+
+### 3. Commit and Push
+Once the missing lines have been merged into your local repository, commit and push:
+```bash
+git add app-ads.txt
+git commit -m "Update app-ads.txt with CAS mediation lines"
+git push
+```
+
+---
+
+## CLI Options
+
+```bash
+# Preview what would be added without modifying files
+python sync.py --dry-run
+
+# Force CAS to re-verify published app-ads.txt before fetching
+python sync.py --recheck
+
+# Override credentials or target path via CLI
+python sync.py --email user@example.com --password mypass --target ./app-ads.txt
+python sync.py --token YOUR_TOKEN --target ./app-ads.txt
+
+# Custom configuration file
+python sync.py --config custom_config.json
+```
+
+### Environment Variables
+You can also use environment variables (ideal for CI/CD or automated cron jobs):
+- `CAS_EMAIL`
+- `CAS_PASSWORD`
+- `CAS_API_TOKEN`
+- `APP_ADS_TXT_PATH`
